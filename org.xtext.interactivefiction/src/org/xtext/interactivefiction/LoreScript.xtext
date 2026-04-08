@@ -1,0 +1,9 @@
+grammar org.xtext.interactivefiction.LoreScript with org.eclipse.xtext.common.Terminals
+
+generate loreScript "http://www.xtext.org/interactivefiction/LoreScript"
+
+Model:
+	greetings+=Greeting*;
+	
+Greeting:
+	'Hello' name=ID '!';

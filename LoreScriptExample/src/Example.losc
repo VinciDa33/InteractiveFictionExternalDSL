@@ -1,0 +1,24 @@
+event Entrance {
+	text: "You stand in the entrance!"
+	goto: Hallway
+}
+
+event Hallway {
+	text: "There are 3 doors. Which one do you pick?"
+	option {
+		text: "Door one. On the left."
+		goto: Terminal
+	}
+	option {
+		text: "Door two. Straight ahead."
+		goto: Terminal
+	}
+	option {
+		text: "Door three. On your right."
+		goto: Terminal
+	}
+}
+
+event Terminal {
+	text: "Death!"
+}

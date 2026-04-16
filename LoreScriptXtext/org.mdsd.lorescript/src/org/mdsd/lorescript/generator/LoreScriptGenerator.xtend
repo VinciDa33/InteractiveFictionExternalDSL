@@ -7,6 +7,8 @@ import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.AbstractGenerator
 import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
+import org.mdsd.lorescript.loreScript.Event
+import org.mdsd.lorescript.loreScript.LoreScript
 
 /**
  * Generates code from your model files on save.
@@ -14,12 +16,28 @@ import org.eclipse.xtext.generator.IGeneratorContext
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#code-generation
  */
 class LoreScriptGenerator extends AbstractGenerator {
-
+	
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
-//		fsa.generateFile('greetings.txt', 'People to greet: ' + 
-//			resource.allContents
-//				.filter(Greeting)
-//				.map[name]
-//				.join(', '))
+		/*
+		for (e : resource.allContents.toIterable.filter(Event)) {
+			fsa.generateFile(
+				e.name + ".java",
+				e.compile)
+		}
+		*/
+
+		val loreScript = resource.contents.head as LoreScript
+		fsa.generateFile(loreScript.name + ".java", loreScript.compile)
 	}
+	
+	private def compile(LoreScript ls) '''
+		package org.mdsd.lorescript.generated
+		
+		public class «ls.name» {
+			
+			public void run() {
+				
+			}
+		}
+	'''
 }

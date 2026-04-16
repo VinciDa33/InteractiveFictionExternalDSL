@@ -3,7 +3,7 @@ grammar org.mdsd.lorescript.LoreScript with org.eclipse.xtext.common.Terminals
 generate loreScript "http://www.mdsd.org/lorescript/LoreScript"
 
 LoreScript:
-    events+=Event*
+    'lorescript' name=ID events+=Event*
 ;
 
 Event:

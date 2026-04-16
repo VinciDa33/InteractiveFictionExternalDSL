@@ -1,3 +1,5 @@
+lorescript MyLoreScript
+
 event Entrance {
 	text: "You stand in the entrance!"
 	goto: Hallway

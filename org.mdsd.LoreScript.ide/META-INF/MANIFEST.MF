@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Automatic-Module-Name: org.mdsd.LoreScript.ide
+Bundle-ManifestVersion: 2
+Bundle-Name: org.mdsd.LoreScript.ide
+Bundle-Vendor: My Company
+Bundle-Version: 1.0.0.qualifier
+Bundle-SymbolicName: org.mdsd.LoreScript.ide; singleton:=true
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.mdsd.LoreScript,
+ org.eclipse.xtext.ide,
+ org.eclipse.xtext.xbase.ide,
+ org.antlr.runtime;bundle-version="[3.2.0,3.2.1)"
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Export-Package: org.mdsd.ide.contentassist.antlr.internal,
+ org.mdsd.ide.contentassist.antlr

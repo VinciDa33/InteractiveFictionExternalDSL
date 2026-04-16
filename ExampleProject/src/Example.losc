@@ -1,0 +1,12 @@
+event Pizza {
+	text: "The pizza party has started"
+	goto: Hotel
+}
+
+event Hotel {
+	text: "Pick a door"
+	option {
+		text: "Door number 1"
+		goto: Pizza
+	}
+}

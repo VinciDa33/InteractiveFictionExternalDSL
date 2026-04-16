@@ -1,0 +1,27 @@
+grammar org.mdsd.LoreScript with org.eclipse.xtext.common.Terminals
+
+generate loreScript "http://www.mdsd.org/LoreScript"
+
+LoreScript:
+    events+=Event*
+;
+
+Event:
+    'event' name=ID '{'type=EventType'}'
+;
+
+EventType:
+    InformationEvent | ChoiceEvent
+;
+
+InformationEvent:
+    'text:'text=STRING ('goto:'transition=[Event])?
+;
+
+ChoiceEvent:
+    'text:'text=STRING options+=Option+
+;
+
+Option:
+    'option''{''text:'text=STRING 'goto:'transition=[Event]'}'
+;

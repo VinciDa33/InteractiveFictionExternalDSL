@@ -6,19 +6,53 @@ event Entrance {
 }
 
 event Hallway {
-	text: "There are 3 doors. Which one do you pick?"
+	text: "You enter a hallway. There are 3 doors. Which one do you pick?"
 	option {
-		text: "Door one. On the left."
-		goto: Terminal
+		text: "Door One. On the left."
+		goto: EmptyRoom
 	}
 	option {
 		text: "Door two. Straight ahead."
-		goto: Terminal
+		goto: Wacko
 	}
 	option {
 		text: "Door three. On your right."
+		goto: TrinketRoom
+	}
+}
+
+event EmptyRoom {
+	text: "You enter an empty room. You leave immediately"
+	goto: Hallway
+}
+
+event TrinketRoom {
+	text: "You enter a room with a curious goblet situated on a small pedestal. Do you grab the goblet?"
+	option {
+		text: "Yes, the loot is mine!"
 		goto: Terminal
 	}
+	option {
+		text: "No, I return to the hallway."
+		goto: Hallway
+	}
+}
+
+event BallRoom {
+	text: "You enter a large ballroom. A figure wants to dance. Do you wish to dance?"
+	option {
+		text: "Yes."
+		goto: Terminal
+	}
+	option {
+		text: "No. I leave!"
+		goto: Hallway
+	}
+}
+
+event Wacko {
+	text: "You enter a wacko room!"
+	goto: Hallway
 }
 
 event Terminal {

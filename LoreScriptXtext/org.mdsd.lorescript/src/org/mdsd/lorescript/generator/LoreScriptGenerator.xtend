@@ -9,6 +9,10 @@ import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
 import org.mdsd.lorescript.loreScript.Event
 import org.mdsd.lorescript.loreScript.LoreScript
+import java.util.List
+import org.eclipse.xtext.EcoreUtil2
+import org.mdsd.lorescript.loreScript.InformationEvent
+import org.mdsd.lorescript.loreScript.ChoiceEvent
 
 /**
  * Generates code from your model files on save.
@@ -25,19 +29,147 @@ class LoreScriptGenerator extends AbstractGenerator {
 				e.compile)
 		}
 		*/
+    	val root = resource.contents.head   // root EObject
+    	val events = EcoreUtil2.getAllContentsOfType(root, Event)
 
 		val loreScript = resource.contents.head as LoreScript
-		fsa.generateFile(loreScript.name + ".java", loreScript.compile)
+		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptEvent.java", loreScript.compileEventCommon);
+		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptOption.java", compileOption);
+		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptInformationEvent.java", loreScript.compileInformationEvent);
+		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptChoiceEvent.java", loreScript.compileChoiceEvent);
+		fsa.generateFile("org/mdsd/lorescript/generated/" + loreScript.name + ".java", loreScript.compile(events));
 	}
 	
-	private def compile(LoreScript ls) '''
-		package org.mdsd.lorescript.generated
+	private def compile(LoreScript ls, List<Event> events) '''
+		package org.mdsd.lorescript.generated;
+		import java.util.ArrayList;
+		import java.util.List;
 		
 		public class «ls.name» {
+			private LoreScriptEvent next;
+			private List<LoreScriptEvent> events = new ArrayList<LoreScriptEvent>();
+			
+			public «ls.name»() {
+				«FOR e : events»
+					«IF e.type instanceof InformationEvent»
+						«val ie = e.type as InformationEvent»	
+							events.add(new LoreScriptInformationEvent("«e.name»", "«ie.text»", «IF ie.transition !== null» "«ie.transition.name»" «ELSE» null «ENDIF»));
+					«ELSEIF e.type instanceof ChoiceEvent»
+						«val ce = e.type as ChoiceEvent»
+							LoreScriptOption[] «e.name»Options = {«FOR o : ce.options SEPARATOR ", "» new LoreScriptOption("«o.text»", "«o.transition.name»")«ENDFOR»};
+							events.add(new LoreScriptChoiceEvent("«e.name»","«ce.text»", «e.name»Options));
+					«ENDIF»
+				«ENDFOR»
+				next = events.get(0);
+			}
 			
 			public void run() {
+				while (next != null)
+					next.run(this);
+			}
+			
+			public void setNext(String nextName) {
+				if (nextName == null) {
+					next = null;
+					return;
+				}
 				
+				for (LoreScriptEvent e : events) {
+					if (e.name.equals(nextName)) {
+						next = e;
+						return;
+					}
+				}
+				next = null;
 			}
 		}
+	'''
+	
+	private def compileEventCommon (LoreScript ls) '''
+		package org.mdsd.lorescript.generated;
+		
+		public abstract class LoreScriptEvent {
+			String name;
+			String text;
+			
+			public LoreScriptEvent(String name, String text) {
+				this.name = name;
+				this.text = text;
+			}
+			
+			public abstract void run(«ls.name» ls);
+		}
+	'''
+	
+	private def compileInformationEvent (LoreScript ls) '''
+		package org.mdsd.lorescript.generated;
+		
+		public class LoreScriptInformationEvent extends LoreScriptEvent {
+			private String transition;
+			
+			public LoreScriptInformationEvent(String name, String text, String transition) {
+				super(name, text);
+				this.transition = transition;
+			}
+			
+			@Override
+			public void run(«ls.name» ls) {
+				System.out.println(text);
+				ls.setNext(transition);
+			}
+		}
+	'''
+	
+	private def compileChoiceEvent(LoreScript ls) '''
+		package org.mdsd.lorescript.generated;
+		import java.util.Scanner;
+			
+		public class LoreScriptChoiceEvent extends LoreScriptEvent {
+			LoreScriptOption[] options;
+			
+			public LoreScriptChoiceEvent(String name, String text, LoreScriptOption[] options) {
+				super(name, text);
+				this.options = options;
+			}
+			
+			@Override
+			public void run(«ls.name» ls) {
+				Scanner scanner = new Scanner(System.in);
+				
+				System.out.println(text);
+				for (int i = 0; i < options.length; i++) {
+					System.out.println("["+(i+1)+"] " + options[i].text);
+				}
+				
+				int choice = 0;
+				while(true) {
+					try {
+						choice = Integer.parseInt(scanner.nextLine());
+						String transition = options[choice-1].transition;
+						ls.setNext(transition);
+						break;
+					}
+					catch (NumberFormatException e) {
+						System.out.println("Your answer must be a number!");
+					}
+					catch (ArrayIndexOutOfBoundsException  e) {
+						System.out.println("Your answer was not a valid option!");
+					}
+				}
+			}
+		}
+	'''
+	
+	private def compileOption() '''
+	package org.mdsd.lorescript.generated;
+	
+	public class LoreScriptOption {
+		public String text;
+		public String transition;
+		public LoreScriptOption(String text, String transition) {
+			this.text = text;
+			this.transition = transition;
+		}
+	}
 	'''
 }

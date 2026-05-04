@@ -13,6 +13,8 @@ import java.util.List
 import org.eclipse.xtext.EcoreUtil2
 import org.mdsd.lorescript.loreScript.InformationEvent
 import org.mdsd.lorescript.loreScript.ChoiceEvent
+import org.mdsd.lorescript.loreScript.StringExp
+import org.mdsd.lorescript.loreScript.StringLiteral
 
 /**
  * Generates code from your model files on save.
@@ -53,11 +55,11 @@ class LoreScriptGenerator extends AbstractGenerator {
 				«FOR e : events»
 					«IF e.type instanceof InformationEvent»
 						«val ie = e.type as InformationEvent»	
-							events.add(new LoreScriptInformationEvent("«e.name»", "«ie.text»", «IF ie.transition !== null» "«ie.transition.name»" «ELSE» null «ENDIF»));
+							events.add(new LoreScriptInformationEvent("«e.name»", «compileStringExp(ie.text)», «IF ie.goto !== null» "«ie.goto.transition.name»" «ELSE» null «ENDIF»));
 					«ELSEIF e.type instanceof ChoiceEvent»
 						«val ce = e.type as ChoiceEvent»
-							LoreScriptOption[] «e.name»Options = {«FOR o : ce.options SEPARATOR ", "» new LoreScriptOption("«o.text»", "«o.transition.name»")«ENDFOR»};
-							events.add(new LoreScriptChoiceEvent("«e.name»","«ce.text»", «e.name»Options));
+							LoreScriptOption[] «e.name»Options = {«FOR o : ce.options SEPARATOR ", "» new LoreScriptOption(«compileStringExp(o.text)», "«o.goto.transition.name»")«ENDFOR»};
+							events.add(new LoreScriptChoiceEvent("«e.name»", «compileStringExp(ce.text)», «e.name»Options));
 					«ENDIF»
 				«ENDFOR»
 				next = events.get(0);
@@ -161,15 +163,28 @@ class LoreScriptGenerator extends AbstractGenerator {
 	'''
 	
 	private def compileOption() '''
-	package org.mdsd.lorescript.generated;
-	
-	public class LoreScriptOption {
-		public String text;
-		public String transition;
-		public LoreScriptOption(String text, String transition) {
-			this.text = text;
-			this.transition = transition;
+		package org.mdsd.lorescript.generated;
+		
+		public class LoreScriptOption {
+			public String text;
+			public String transition;
+			public LoreScriptOption(String text, String transition) {
+				this.text = text;
+				this.transition = transition;
+			}
 		}
-	}
 	'''
+	
+	def CharSequence compileStringExp(StringExp exp) {
+	    switch exp {
+	    	StringLiteral:
+	            '''"«exp.value»"'''
+	        default:
+	            if (exp.right !== null)
+	                '''«compileStringExp(exp.left)» + «compileStringExp(exp.right)»'''
+	            else
+	                compileStringExp(exp.left)
+	
+	    }
+	}
 }

@@ -3,7 +3,11 @@ grammar org.mdsd.lorescript.LoreScript with org.eclipse.xtext.common.Terminals
 generate loreScript "http://www.mdsd.org/lorescript/LoreScript"
 
 LoreScript:
-    'lorescript' name=ID events+=Event*
+    'lorescript' name=ID scenarios+=Scenario*
+;
+
+Scenario:
+	'scenario' name=ID '{'events+=Event*'}'
 ;
 
 Event:
@@ -15,13 +19,25 @@ EventType:
 ;
 
 InformationEvent:
-    'text:'text=STRING ('goto:'transition=[Event])?
+    'text:'text=StringExp (goto=Goto)?
 ;
 
 ChoiceEvent:
-    'text:'text=STRING options+=Option+
+    'text:'text=StringExp options+=Option+
 ;
 
 Option:
-    'option''{''text:'text=STRING 'goto:'transition=[Event]'}'
+    'option''{''text:'text=StringExp goto=Goto'}'
+;
+
+Goto:
+	('goto:' | '->') transition=[Event]
+;
+
+StringExp:
+	StringLiteral ({StringExp.left=current} '+' right=StringLiteral)*
+;
+
+StringLiteral:
+	{StringLiteral} value=STRING
 ;

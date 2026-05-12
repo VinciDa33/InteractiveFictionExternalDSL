@@ -7,7 +7,6 @@ import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.AbstractGenerator
 import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
-import org.mdsd.lorescript.loreScript.Event
 import org.mdsd.lorescript.loreScript.LoreScript
 import java.util.List
 import org.eclipse.xtext.EcoreUtil2
@@ -15,6 +14,9 @@ import org.mdsd.lorescript.loreScript.InformationEvent
 import org.mdsd.lorescript.loreScript.ChoiceEvent
 import org.mdsd.lorescript.loreScript.StringExp
 import org.mdsd.lorescript.loreScript.StringLiteral
+import org.mdsd.lorescript.loreScript.Scenario
+import org.mdsd.lorescript.loreScript.ConcatExp
+import org.mdsd.lorescript.loreScript.MultiplyExp
 
 /**
  * Generates code from your model files on save.
@@ -32,37 +34,52 @@ class LoreScriptGenerator extends AbstractGenerator {
 		}
 		*/
     	val root = resource.contents.head   // root EObject
-    	val events = EcoreUtil2.getAllContentsOfType(root, Event)
+    	val scenarios = EcoreUtil2.getAllContentsOfType(root, Scenario)
+    	//val events = EcoreUtil2.getAllContentsOfType(root, Event)
 
 		val loreScript = resource.contents.head as LoreScript
 		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptEvent.java", loreScript.compileEventCommon);
+		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptScenario.java", loreScript.compileScenarioCommon);
 		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptOption.java", compileOption);
 		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptInformationEvent.java", loreScript.compileInformationEvent);
 		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptChoiceEvent.java", loreScript.compileChoiceEvent);
-		fsa.generateFile("org/mdsd/lorescript/generated/" + loreScript.name + ".java", loreScript.compile(events));
+		fsa.generateFile("org/mdsd/lorescript/generated/" + loreScript.name + ".java", loreScript.compile(scenarios));
 	}
 	
-	private def compile(LoreScript ls, List<Event> events) '''
+	private def compile(LoreScript ls, List<Scenario> scenarios) '''
 		package org.mdsd.lorescript.generated;
 		import java.util.ArrayList;
 		import java.util.List;
 		
 		public class «ls.name» {
+			private LoreScriptScenario currentScenario;
 			private LoreScriptEvent next;
-			private List<LoreScriptEvent> events = new ArrayList<LoreScriptEvent>();
+			private List<LoreScriptScenario> scenarios = new ArrayList<LoreScriptScenario>();
 			
 			public «ls.name»() {
-				«FOR e : events»
-					«IF e.type instanceof InformationEvent»
-						«val ie = e.type as InformationEvent»	
-							events.add(new LoreScriptInformationEvent("«e.name»", «compileStringExp(ie.text)», «IF ie.goto !== null» "«ie.goto.transition.name»" «ELSE» null «ENDIF»));
-					«ELSEIF e.type instanceof ChoiceEvent»
-						«val ce = e.type as ChoiceEvent»
-							LoreScriptOption[] «e.name»Options = {«FOR o : ce.options SEPARATOR ", "» new LoreScriptOption(«compileStringExp(o.text)», "«o.goto.transition.name»")«ENDFOR»};
-							events.add(new LoreScriptChoiceEvent("«e.name»", «compileStringExp(ce.text)», «e.name»Options));
-					«ENDIF»
+				«FOR s : scenarios»
+					LoreScriptScenario «s.name.toLowerCase» = new LoreScriptScenario("«s.name»");
+					«FOR e : s.events»
+						«IF e.type instanceof InformationEvent»
+							«val ie = e.type as InformationEvent»
+								«IF ie.goto === null»
+									«s.name.toLowerCase».addEvent(new LoreScriptInformationEvent("«e.name»", «compileStringExp(ie.text)», null, null));
+								«ELSEIF ie.goto.transitionScenario === null»
+									«s.name.toLowerCase».addEvent(new LoreScriptInformationEvent("«e.name»", «compileStringExp(ie.text)», null, "«ie.goto.transitionEvent»"));
+								«ELSE»
+									«s.name.toLowerCase».addEvent(new LoreScriptInformationEvent("«e.name»", «compileStringExp(ie.text)», "«ie.goto.transitionScenario.name»", "«ie.goto.transitionEvent»"));
+								«ENDIF»
+						«ELSEIF e.type instanceof ChoiceEvent»
+							«val ce = e.type as ChoiceEvent»
+								LoreScriptOption[] «e.name.toLowerCase»Options = {«FOR o : ce.options SEPARATOR ", "» new LoreScriptOption(«compileStringExp(o.text)», «IF o.goto.transitionScenario !== null»"«o.goto.transitionScenario.name»"«ELSE»null«ENDIF», "«o.goto.transitionEvent»")«ENDFOR»};
+								«s.name.toLowerCase».addEvent(new LoreScriptChoiceEvent("«e.name»", «compileStringExp(ce.text)», «e.name.toLowerCase»Options));
+						«ENDIF»
+					«ENDFOR»
+					scenarios.add(«s.name.toLowerCase»);
 				«ENDFOR»
-				next = events.get(0);
+				
+				currentScenario = scenarios.get(0);
+				next = currentScenario.getEvent(0);
 			}
 			
 			public void run() {
@@ -70,19 +87,23 @@ class LoreScriptGenerator extends AbstractGenerator {
 					next.run(this);
 			}
 			
-			public void setNext(String nextName) {
-				if (nextName == null) {
+			public void setNext(String nextEventName) {
+				if (nextEventName == null) {
 					next = null;
 					return;
 				}
 				
-				for (LoreScriptEvent e : events) {
-					if (e.name.equals(nextName)) {
-						next = e;
+				next = currentScenario.getEvent(nextEventName);
+			}
+			
+			public void setNext(String nextScenarioName, String nextEventName) {
+				for (LoreScriptScenario s : scenarios) {
+					if (s.name.equals(nextScenarioName)) {
+						currentScenario = s;
+						next = s.getEvent(nextEventName);
 						return;
 					}
 				}
-				next = null;
 			}
 		}
 	'''
@@ -103,21 +124,61 @@ class LoreScriptGenerator extends AbstractGenerator {
 		}
 	'''
 	
+	private def compileScenarioCommon (LoreScript ls) '''
+		package org.mdsd.lorescript.generated;
+		import java.util.ArrayList;
+		import java.util.List;
+		
+		public class LoreScriptScenario {
+			String name;
+			private List<LoreScriptEvent> events = new ArrayList<LoreScriptEvent>();
+			
+			public LoreScriptScenario (String name) {
+				this.name = name;
+			}
+			
+			public void addEvent(LoreScriptEvent event) {
+				events.add(event);
+			}
+			
+			public LoreScriptEvent getEvent(String name) {
+				for (LoreScriptEvent lse : events) {
+					if (lse.name.equals(name)) {
+						return lse;
+					}
+				}
+				return null;
+			}
+			
+			public LoreScriptEvent getEvent(int index) {
+				return events.get(index);
+			}
+		}
+	'''
+	
 	private def compileInformationEvent (LoreScript ls) '''
 		package org.mdsd.lorescript.generated;
 		
 		public class LoreScriptInformationEvent extends LoreScriptEvent {
-			private String transition;
+			private String transitionScenario = null;
+			private String transitionEvent = null;
 			
-			public LoreScriptInformationEvent(String name, String text, String transition) {
+			public LoreScriptInformationEvent(String name, String text, String transitionScenario, String transitionEvent) {
 				super(name, text);
-				this.transition = transition;
+				this.transitionScenario = transitionScenario;
+				this.transitionEvent = transitionEvent;
 			}
 			
 			@Override
 			public void run(«ls.name» ls) {
 				System.out.println(text);
-				ls.setNext(transition);
+				
+				if (transitionScenario == null) {
+					ls.setNext(transitionEvent);
+				}
+				else {
+					ls.setNext(transitionScenario, transitionEvent);
+				}
 			}
 		}
 	'''
@@ -147,8 +208,15 @@ class LoreScriptGenerator extends AbstractGenerator {
 				while(true) {
 					try {
 						choice = Integer.parseInt(scanner.nextLine());
-						String transition = options[choice-1].transition;
-						ls.setNext(transition);
+						String transitionScenario = options[choice-1].transitionScenario;
+						String transitionEvent = options[choice-1].transitionEvent;
+						
+						if (transitionScenario == null) {
+							ls.setNext(transitionEvent);
+						}
+						else {
+							ls.setNext(transitionScenario, transitionEvent);
+						}
 						break;
 					}
 					catch (NumberFormatException e) {
@@ -167,10 +235,12 @@ class LoreScriptGenerator extends AbstractGenerator {
 		
 		public class LoreScriptOption {
 			public String text;
-			public String transition;
-			public LoreScriptOption(String text, String transition) {
+			public String transitionScenario;
+			public String transitionEvent;
+			public LoreScriptOption(String text, String transitionScenario, String transitionEvent) {
 				this.text = text;
-				this.transition = transition;
+				this.transitionScenario = transitionScenario;
+				this.transitionEvent = transitionEvent;
 			}
 		}
 	'''
@@ -179,12 +249,19 @@ class LoreScriptGenerator extends AbstractGenerator {
 	    switch exp {
 	    	StringLiteral:
 	            '''"«exp.value»"'''
-	        default:
-	            if (exp.right !== null)
-	                '''«compileStringExp(exp.left)» + «compileStringExp(exp.right)»'''
-	            else
-	                compileStringExp(exp.left)
+	            
+	        ConcatExp:
+	        	'''«compileStringExp(exp.left)» + «compileStringExp(exp.right)»'''
+	        	
+	        MultiplyExp: {
+	            val repeated = (1 .. exp.multiplier)
+	                .map[compileStringExp(exp.left).toString]
+	                .join(" + ")
 	
+	            '''(«repeated»)'''
+        	}
+	        default:
+	            '''""'''
 	    }
 	}
 }

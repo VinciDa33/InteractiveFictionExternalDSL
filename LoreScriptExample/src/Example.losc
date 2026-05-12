@@ -23,8 +23,8 @@ scenario HauntedHouse {
 	}
 	
 	event EmptyRoom {
-		text: "You enter an empty room. You leave immediately"
-		goto: Hallway
+		text: "You enter an empty room. You pass through it."
+		goto: BallRoom
 	}
 	
 	event TrinketRoom {
@@ -58,5 +58,38 @@ scenario HauntedHouse {
 	
 	event Terminal {
 		text: "Death!"
+		goto: Hell.Welcome
+	}
+}
+
+scenario Hell {
+	event Welcome {
+		text: "You died and have ended up in hell. A demon greets you!"
+		goto: DemonsChoice
+	}
+	
+	event DemonsChoice {
+		text: "The demon gives you a choice!"
+		option {
+			text: "Surrender your soul, but be revived!"
+			goto: HauntedHouse.Entrance
+		}
+		option {
+			text: "Work in the burning flames of hell for an eternity (free housing)"
+			goto: Eternity
+		}
+		option {
+			text: "Listen to an old radio for 1 full year!"
+			goto: Radio
+		}
+	}
+	
+	event Eternity {
+		text: "You become a demon. Forever."
+	}
+	
+	event Radio {
+		text: "You are sat before the radio. Its noises are terrible and the sound is garbled." +
+		"A glitchy male voice speaks. " + "Co-" * 3 + "Combo breaker!"
 	}
 }

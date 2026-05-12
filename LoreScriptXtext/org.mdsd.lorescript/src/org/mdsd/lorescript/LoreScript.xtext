@@ -30,14 +30,24 @@ Option:
     'option''{''text:'text=StringExp goto=Goto'}'
 ;
 
+//These ID's for transitionEvent should ideally be [Event] references. However this requires 
+//custom scoping or a custom qualified name provider, which is out of scope for the group project.
 Goto:
-	('goto:' | '->') transition=[Event]
+	('goto:' | '->') (transitionEvent=ID | transitionScenario=[Scenario] '.' transitionEvent=ID)
 ;
 
 StringExp:
-	StringLiteral ({StringExp.left=current} '+' right=StringLiteral)*
+	ConcatExp
 ;
 
-StringLiteral:
+ConcatExp returns StringExp:
+    MultiplyExp ({ConcatExp.left=current} '+' right=MultiplyExp)*
+;
+
+MultiplyExp returns StringExp:
+    StringLiteral ({MultiplyExp.left=current} '*' multiplier=INT)*
+;
+
+StringLiteral returns StringExp:
 	{StringLiteral} value=STRING
 ;

@@ -33,7 +33,7 @@ Option:
 //These ID's for transitionEvent should ideally be [Event] references. However this requires 
 //custom scoping or a custom qualified name provider, which is out of scope for the group project.
 Goto:
-	('goto:' | '->') (transitionEvent=ID | transitionScenario=[Scenario] '.' transitionEvent=ID)
+	('goto:' | '->') (transitionEvent=[Event] | transitionScenario=[Scenario] '.' transitionEvent=[Event])
 ;
 
 StringExp:

@@ -3,6 +3,11 @@
  */
 package org.mdsd.lorescript.scoping;
 
+import org.eclipse.xtext.scoping.IScope;
+import org.mdsd.lorescript.loreScript.Goto;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.xtext.scoping.Scopes;
 
 /**
  * This class contains custom scoping description.
@@ -11,5 +16,20 @@ package org.mdsd.lorescript.scoping;
  * on how and when to use it.
  */
 public class LoreScriptScopeProvider extends AbstractLoreScriptScopeProvider {
+	
+	@Override
+	public IScope getScope(EObject context, EReference reference) {
+	    //Scoping to allow the syntax 'Scenario.Event'
+		if (context instanceof Goto && reference.getName().equals("transitionEvent")) {
+	        //System.out.println("I am scoping!!!");
 
+	        Goto g = (Goto) context;
+
+	        if (g.getTransitionScenario() != null) {
+	            return Scopes.scopeFor(g.getTransitionScenario().getEvents());
+	        }
+	    }
+
+	    return super.getScope(context, reference);
+	}
 }

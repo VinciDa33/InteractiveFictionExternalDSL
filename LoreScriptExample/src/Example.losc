@@ -2,7 +2,7 @@ lorescript MyLoreScript
 
 scenario HauntedHouse {
 	event Entrance {
-		text: "You stand in the entrance!"
+		text: "Welcome " + get("player_name") + "! " + "You stand in the entrance!"
 		goto: Hallway
 	}
 	

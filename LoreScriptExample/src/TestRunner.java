@@ -4,7 +4,7 @@ public class TestRunner {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		MyLoreScript mls = new MyLoreScript();
+		MyLoreScript mls = new MyLoreScript(new GameGetHandler());
 		mls.run();
 	}
 

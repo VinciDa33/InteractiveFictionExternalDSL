@@ -45,9 +45,17 @@ ConcatExp returns StringExp:
 ;
 
 MultiplyExp returns StringExp:
-    StringLiteral ({MultiplyExp.left=current} '*' multiplier=INT)*
+    PrimaryExp ({MultiplyExp.left=current} '*' multiplier=INT)*
+;
+
+PrimaryExp returns StringExp:
+	StringLiteral | GetFunction
 ;
 
 StringLiteral returns StringExp:
 	{StringLiteral} value=STRING
+;
+
+GetFunction returns StringExp:
+	{GetFunction} 'get(' request=STRING ')'
 ;

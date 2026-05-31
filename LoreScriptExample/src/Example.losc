@@ -1,95 +1,140 @@
 lorescript MyLoreScript
 
-scenario HauntedHouse {
-	event Entrance {
-		text: "Welcome " + get("player_name") + "! " + "You stand in the entrance!"
-		goto: Hallway
+scenario PlayerCustomization {
+	event Welcome {
+		text: "Welcome! " + "Lets find out who you are!"
+		goto: PlayerName
 	}
 	
-	event Hallway {
-		text: "You enter a hallway. There are 3 doors. Which one do you pick?"
+	event PlayerName {
+		text: "Is your name " + $potentialPlayerName + "?"
 		option {
-			text: "Door One. On the left."
-			goto: EmptyRoom
+			text: "Yes, thats it!"
+			trigger lockName()
+			goto: AbilityIntro
 		}
 		option {
-			text: "Door two. Straight ahead."
-			goto: Wacko
-		}
-		option {
-			text: "Door three. On your right."
-			goto: TrinketRoom
+			text: "No, try again!"
+			goto: PlayerName
 		}
 	}
 	
-	event EmptyRoom {
-		text: "You enter an empty room. You pass through it."
-		goto: BallRoom
+	event AbilityIntro {
+		text: "Next up, what is your secret move?"
+		goto: PlayerAbility
 	}
 	
-	event TrinketRoom {
-		text: "You enter a room with a curious goblet situated on a small pedestal. Do you grab the goblet?"
+	event PlayerAbility {
+		text: "Do you have the ability to " + $potentialPlayerAbility + "?"
 		option {
-			text: "Yes! " + "the loot is mine!"
-			goto: Terminal
+			text: "Yup, thats what I do!"
+			trigger lockAbility()
+			goto: PlayerFinal
 		}
 		option {
-			text: "No. " + "I return to the hallway."
-			goto: Hallway
-		}
-	}
-	
-	event BallRoom {
-		text: "You enter a large ballroom. A figure wants to dance. Do you wish to dance?"
-		option {
-			text: "Yes."
-			goto: Terminal
-		}
-		option {
-			text: "No. I leave!"
-			goto: Hallway
+			text: "Nah, thats not what I do!"
+			goto: PlayerAbility
 		}
 	}
 	
-	event Wacko {
-		text: "You enter a wacko room!"
-		goto: Hallway
-	}
-	
-	event Terminal {
-		text: "Death!"
-		goto: Hell.Welcome
+	event PlayerFinal {
+		text: "So you are " + $playerName + " and you have the ability to " + $playerAbility + "."
+		option {
+			text: "Heck yeah!"
+			goto: Combat.Start
+		}
+		option {
+			text: "Nope, all wrong. Lets start over!"
+			trigger clearPlayer()
+			goto: PlayerName
+		}
 	}
 }
 
-scenario Hell {
-	event Welcome {
-		text: "You died and have ended up in hell. A demon greets you!"
-		goto: DemonsChoice
+scenario Combat {
+	event Start {
+		text: "Welcome to trial by combat! Todays contestants are Volf the Voracious! vs " + $playerName + "!"
+		goto: Fight1
 	}
 	
-	event DemonsChoice {
-		text: "The demon gives you a choice!"
+	event Fight1 {
+		text: "A big hairy guy stands before you! What will you do?"
 		option {
-			text: "Surrender your soul, but be revived!"
-			goto: HauntedHouse.Entrance
+			text: "I prepare to dodge!"
+			goto: Fight1Dodge
 		}
 		option {
-			text: "Work in the burning flames of hell for an eternity (free housing)"
-			goto: Eternity
+			text: "I do a high kick!"
+			goto: Fight1Kick
 		}
 		option {
-			text: "Listen to an old radio for 1 full year!"
-			goto: Radio
+			text: "I punch him in the face"
+			goto: Fight1Punch
 		}
 	}
 	
-	event Eternity {
-		text: "You become a demon. Forever."
+	event Fight1Dodge {
+		text: "Volf swings his mighty fists in a flurry of blows, but you dodge out of the way completely!"
+		trigger logMove("Dodge")
+		goto: Fight2
 	}
 	
-	event Radio {
-		text: "You are sat before the radio. Its noises are terrible and the sound is garbled." +
-		"A glitchy male voice speaks. " + "Co-" * 3 + "Combo breaker!"
+	event Fight1Kick {
+		text: "You kick Volf in the jaw. He seems noticable rattled, but still standing!"
+		trigger enemyDamage(15)
+		trigger logMove("Kick")
+		goto: Fight2
+	}
+	
+	event Fight1Punch {
+		text: "You punch Volf in the face. His face feels like a rock. You take a bit of damage"
+		trigger playerDamage(5)
+		trigger logMove("Punch")
+		goto: Fight2
+		
+	}
+	
+	event Fight2 {
+		text: "Time is running by fast, with only a few moments on the clock whaw will you do?"
+		option {
+			text: "I do a leg sweep!"
+			goto: Fight2Sweep
+		}
+		option {
+			text: "I use my special ability!"
+			goto: Fight2Special
+		}
+		option {
+			text: "I run away to run down the clock!"
+			goto: Fight2Run
+		}
+	}
+	
+	event Fight2Sweep {
+		text: "Volf falls heavily to the ground."
+		trigger enemyDamage(10)
+		trigger logMove("Sweep")
+		goto: Clock
+	}
+	
+	event Fight2Special {
+		text: $playerAbilityDescription
+		trigger logMove("Special")
+		goto: Clock
+	}
+	
+	event Fight2Run {
+		text: "You run away, screaming to confuse your larger enemey."
+		trigger logMove("Run")
+		goto: Clock
+	}
+	
+	event Clock {
+		text: "Ding ding ding. The clock is up, and it is time to declare the winner!"
+		goto: Winner
+	}
+	
+	event Winner {
+		text: $winnerText
 	}
 }

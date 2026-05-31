@@ -3,6 +3,15 @@
  */
 package org.mdsd.lorescript.validation;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.eclipse.xtext.validation.Check;
+import org.mdsd.lorescript.loreScript.*;
+
+import org.mdsd.lorescript.loreScript.LoreScript;
 
 /**
  * This class contains custom validation rules. 
@@ -22,4 +31,56 @@ public class LoreScriptValidator extends AbstractLoreScriptValidator {
 //		}
 //	}
 	
+	@Check
+    public void checkTriggerConsistency(LoreScript model) {
+        Map<String, List<String>> signaturesByFunction = new HashMap<>();
+
+        model.eAllContents().forEachRemaining(e -> {
+
+            if (!(e instanceof Trigger trigger)) {
+                return;
+            }
+
+            String function = trigger.getFunction();
+
+            List<String> signature = trigger.getParams()
+                    .stream()
+                    .map(this::paramType)
+                    .collect(Collectors.toList());
+
+            if (!signaturesByFunction.containsKey(function)) {
+                signaturesByFunction.put(function, signature);
+                return;
+            }
+
+            List<String> expected = signaturesByFunction.get(function);
+
+            if (!expected.equals(signature)) {
+
+                error("Inconsistent trigger signature for function '"
+                        + function + "'. Expected " + expected
+                        + " but got " + signature,
+                    trigger,
+                    LoreScriptPackage.Literals.TRIGGER__PARAMS
+                );
+            }
+        });
+    }
+
+    private String paramType(Param param) {
+
+        if (param instanceof StringParam) {
+            return "STRING";
+        }
+
+        if (param instanceof IntParam) {
+            return "INT";
+        }
+
+        if (param instanceof BoolParam) {
+            return "BOOL";
+        }
+
+        return "UNKNOWN";
+    }
 }

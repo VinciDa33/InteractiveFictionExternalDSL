@@ -19,6 +19,11 @@ import org.mdsd.lorescript.loreScript.ConcatExp
 import org.mdsd.lorescript.loreScript.MultiplyExp
 import org.mdsd.lorescript.loreScript.GetFunction
 import org.mdsd.lorescript.loreScript.Event
+import org.mdsd.lorescript.loreScript.Trigger
+import org.mdsd.lorescript.loreScript.Param
+import org.mdsd.lorescript.loreScript.BoolParam
+import org.mdsd.lorescript.loreScript.StringParam
+import org.mdsd.lorescript.loreScript.IntParam
 
 /**
  * Generates code from your model files on save.
@@ -38,15 +43,19 @@ class LoreScriptGenerator extends AbstractGenerator {
     	val root = resource.contents.head   // root EObject
     	val scenarios = EcoreUtil2.getAllContentsOfType(root, Scenario)
     	val events = EcoreUtil2.getAllContentsOfType(root, Event)
+    	val triggers = EcoreUtil2.getAllContentsOfType(root, Trigger)
     	val getFunctions = EcoreUtil2.getAllContentsOfType(root, GetFunction)
 
 		val loreScript = resource.contents.head as LoreScript
 		if (getFunctions.length > 0) {
 			fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptGetHandler.java", compileGetInterface());
 		}
+		if (triggers.length > 0) {
+			fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptTriggerHandler.java", compileTriggerInterface(triggers))
+		}
+		
 		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptScenario.java", loreScript.compileScenarioCommon);
 		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptEvent.java", loreScript.compileEventCommon);
-		fsa.generateFile("org/mdsd/lorescript/generated/LoreScriptOption.java", compileOption);
 		
 		for (e : events) {
 			switch e.type {
@@ -59,10 +68,10 @@ class LoreScriptGenerator extends AbstractGenerator {
 			}
 		}
 		
-		fsa.generateFile("org/mdsd/lorescript/generated/" + loreScript.name + ".java", loreScript.compile(scenarios, getFunctions));
+		fsa.generateFile("org/mdsd/lorescript/generated/" + loreScript.name + ".java", loreScript.compile(scenarios, triggers, getFunctions));
 	}
 	
-	private def compile(LoreScript ls, List<Scenario> scenarios, List<GetFunction> getFunctions) '''
+	private def compile(LoreScript ls, List<Scenario> scenarios, List<Trigger> triggers, List<GetFunction> getFunctions) '''
 		package org.mdsd.lorescript.generated;
 		import java.util.ArrayList;
 		import java.util.List;
@@ -72,26 +81,26 @@ class LoreScriptGenerator extends AbstractGenerator {
 			«IF getFunctions.length > 0»
 			public final LoreScriptGetHandler getHandler;
 			«ENDIF»
+			«IF triggers.length > 0»
+			public final LoreScriptTriggerHandler triggerHandler;
+			«ENDIF»
 			
 			private LoreScriptScenario currentScenario;
 			private LoreScriptEvent next;
 			private List<LoreScriptScenario> scenarios = new ArrayList<LoreScriptScenario>();
 			public final Scanner scanner = new Scanner(System.in);
 			
-			«IF getFunctions.length == 0»
-			public «ls.name»() {
+			public «ls.name»(«loreScriptSignature(triggers, getFunctions)») {
 				Create();
+				«IF getFunctions.length > 0»
+					this.getHandler = getHandler;
+				«ENDIF»
+				«IF triggers.length > 0»
+					this.triggerHandler = triggerHandler;
+				«ENDIF»
 				currentScenario = scenarios.get(0);
 				next = currentScenario.getEvent(0);
 			}
-			«ELSE»
-			public «ls.name»(LoreScriptGetHandler getHandler) {
-				Create();
-				this.getHandler = getHandler;
-				currentScenario = scenarios.get(0);
-				next = currentScenario.getEvent(0);
-			}
-			«ENDIF»
 			
 			private void Create() {
 				«FOR s : scenarios»
@@ -202,6 +211,13 @@ class LoreScriptGenerator extends AbstractGenerator {
 				String text = «compileStringExp(ie.text)»;
 				System.out.println(text);
 				
+				«FOR trigger : ie.getTriggers»
+				ls.triggerHandler.«trigger.function»(
+					«FOR i : 0..<trigger.params.size SEPARATOR ', '»
+			            «paramValue(trigger.params.get(i))»
+			        «ENDFOR»);
+				«ENDFOR»
+				
 				if (transitionScenario == null) {
 					ls.setNext(transitionEvent);
 				}
@@ -210,7 +226,6 @@ class LoreScriptGenerator extends AbstractGenerator {
 				}
 			}
 		}
-	
 	'''
 	
 	private def compileChoiceEvent(LoreScript ls, Event e) '''
@@ -223,69 +238,77 @@ class LoreScriptGenerator extends AbstractGenerator {
 				super("«e.name»");
 			}
 			
+			«FOR pair : ce.options.indexed»
+			private void option«pair.key + 1»(«ls.name» ls) {				
+				«FOR trigger : pair.value.getTriggers»
+				ls.triggerHandler.«trigger.function»(
+					«FOR i : 0..<trigger.params.size SEPARATOR ', '»
+			            «paramValue(trigger.params.get(i))»
+			        «ENDFOR»);
+				«ENDFOR»
+				
+				«IF pair.value.goto.transitionScenario === null»
+					ls.setNext("«pair.value.goto.transitionEvent.name»");
+				«ELSE»
+					ls.setNext("«pair.value.goto.transitionScenario.name»", "«pair.value.goto.transitionEvent.name»");
+				«ENDIF»
+			}
+			«ENDFOR»
+			
 			@Override
 			public void run(«ls.name» ls) {				
 				String text = «compileStringExp(ce.text)»;
 				System.out.println(text);
-								
-				LoreScriptOption[] options = new LoreScriptOption[«ce.options.length»];
+				
 				«FOR pair : ce.options.indexed»
-					«IF pair.value.goto.transitionScenario === null»
-						options[«pair.key»] = new LoreScriptOption(«compileStringExp(pair.value.text)», null, "«pair.value.goto.transitionEvent.name»");
-					«ELSE»
-						options[«pair.key»] = new LoreScriptOption(«compileStringExp(pair.value.text)», "«pair.value.goto.transitionScenario.name»", "«pair.value.goto.transitionEvent.name»");
-					«ENDIF»
+					System.out.println("[«pair.key + 1»] " + «compileStringExp(pair.value.text)»);
 				«ENDFOR»
-				for (int i = 0; i < options.length; i++) {
-					System.out.println("["+(i+1)+"] " + options[i].text);
-				}
 				
 				int choice = 0;
 				while(true) {
 					try {
 						choice = Integer.parseInt(ls.scanner.nextLine());
-						String transitionScenario = options[choice-1].transitionScenario;
-						String transitionEvent = options[choice-1].transitionEvent;
+						«FOR pair : ce.options.indexed»
+							if (choice == «pair.key + 1») {
+								option«pair.key + 1»(ls);
+								break;
+							}
+						«ENDFOR»
 						
-						if (transitionScenario == null) {
-							ls.setNext(transitionEvent);
-						}
-						else {
-							ls.setNext(transitionScenario, transitionEvent);
-						}
-						break;
+						System.out.println("Your answer must be a valid number!");
 					}
 					catch (NumberFormatException e) {
 						System.out.println("Your answer must be a number!");
 					}
-					catch (ArrayIndexOutOfBoundsException  e) {
-						System.out.println("Your answer was not a valid option!");
-					}
 				}
-			}
-		}
-	'''
-	
-	private def compileOption() '''
-		package org.mdsd.lorescript.generated;
-		
-		public class LoreScriptOption {
-			public String text;
-			public String transitionScenario;
-			public String transitionEvent;
-			public LoreScriptOption(String text, String transitionScenario, String transitionEvent) {
-				this.text = text;
-				this.transitionScenario = transitionScenario;
-				this.transitionEvent = transitionEvent;
 			}
 		}
 	'''
 	
 	private def compileGetInterface() '''
 		package org.mdsd.lorescript.generated;
-	
+
 		public interface LoreScriptGetHandler {
 			public String get(String request);
+		}
+	'''
+	
+	private def compileTriggerInterface(List<Trigger> triggers) '''
+		«val uniqueTriggers = triggers
+		    .groupBy[function]
+		    .values
+		    .map[head]»
+		
+		package org.mdsd.lorescript.generated;
+
+		public interface LoreScriptTriggerHandler {
+			«FOR trigger : uniqueTriggers»
+			public void «trigger.function»( 
+				«FOR param : trigger.params SEPARATOR ', '»
+					«javaType(param)» value«trigger.params.indexOf(param)»
+				«ENDFOR»
+			);
+			«ENDFOR»
 		}
 	'''
 	
@@ -310,5 +333,33 @@ class LoreScriptGenerator extends AbstractGenerator {
 	        default:
 	            '''""'''
 	    }
+	}
+	
+	private def loreScriptSignature (List<Trigger> triggers, List<GetFunction> getFunctions) '''
+	«IF triggers.length > 0 && getFunctions.length > 0»
+	LoreScriptTriggerHandler triggerHandler, LoreScriptGetHandler getHandler
+	«ELSEIF triggers.length > 0»
+	LoreScriptTriggerHandler triggerHandler
+	«ELSE»
+	LoreScriptGetHandler getHandler
+	«ENDIF»
+	'''
+	
+	def paramValue(Param param) {
+		switch param {
+			BoolParam: '''«param.value.toLowerCase»'''
+	        StringParam: '''"«param.value»"'''
+	        IntParam: '''«param.value»'''
+	        default: ""
+		}
+    }
+	
+	def String javaType(Param param) {
+	    switch param {
+	        BoolParam: "boolean"
+	        StringParam: "String"
+	        IntParam: "int"
+	        default: "Object"
+    	}
 	}
 }

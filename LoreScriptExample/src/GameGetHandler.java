@@ -1,19 +1,30 @@
-import java.util.Random;
-
 import org.mdsd.lorescript.generated.LoreScriptGetHandler;
 
-public class GameGetHandler implements LoreScriptGetHandler {
 
-	String[] nameArr = {"John", "Jimmy", "Frank", "Louise", "Saitama", "Flourance", "Jake"};
+public class GameGetHandler implements LoreScriptGetHandler {
 	
 	@Override
-	public String get(String request) {
-		if (request.equals("player_name")) {
-			Random rand = new Random();
-			int index = rand.nextInt(nameArr.length);
-			return nameArr[index];
-		}
-		return "";
+	public String get(String request) {	
+		if (request.equals("potentialPlayerName"))
+			return GameManager.getInstance().getNameProposed();
+		
+		if (request.equals("potentialPlayerAbility"))
+			return GameManager.getInstance().getAbilityProposed();
+		
+		if (request.equals("playerName"))
+			return GameManager.getInstance().getName();
+		
+		if (request.equals("playerAbility"))
+			return GameManager.getInstance().getAbilityName();
+		
+		if (request.equals("playerAbilityDescription"))
+			return GameManager.getInstance().getAbilityDescription();
+		
+		if (request.equals("winnerText"))
+			return GameManager.getInstance().getWinnerText();
+		
+		return null;
 	}
+
 
 }

@@ -19,7 +19,7 @@ EventType:
 ;
 
 InformationEvent:
-    'text:'text=StringExp (goto=Goto)?
+    'text:'text=StringExp (triggers+=Trigger)* (goto=Goto)?
 ;
 
 ChoiceEvent:
@@ -27,13 +27,33 @@ ChoiceEvent:
 ;
 
 Option:
-    'option''{''text:'text=StringExp goto=Goto'}'
+    'option''{''text:'text=StringExp (triggers+=Trigger)* goto=Goto'}'
 ;
 
 //These ID's for transitionEvent should ideally be [Event] references. However this requires 
 //custom scoping or a custom qualified name provider, which is out of scope for the group project.
 Goto:
 	('goto:' | '->') (transitionEvent=[Event] | transitionScenario=[Scenario] '.' transitionEvent=[Event])
+;
+
+Trigger:
+	'trigger' function=ID '('(params+=Param (',' params+=Param)*)?')'
+;
+
+Param:
+	StringParam | IntParam | BoolParam
+;
+
+StringParam:
+	value=STRING
+;
+
+IntParam:
+	value=INT
+;
+
+BoolParam:
+	value=('TRUE' | 'FALSE' | 'true' | 'false')
 ;
 
 StringExp:
@@ -57,5 +77,5 @@ StringLiteral returns StringExp:
 ;
 
 GetFunction returns StringExp:
-	{GetFunction} 'get(' request=STRING ')'
+	{GetFunction} '$' request=ID
 ;

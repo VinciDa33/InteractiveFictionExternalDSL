@@ -21,7 +21,6 @@ public class LoreScriptScopeProvider extends AbstractLoreScriptScopeProvider {
 	public IScope getScope(EObject context, EReference reference) {
 	    //Scoping to allow the syntax 'Scenario.Event'
 		if (context instanceof Goto && reference.getName().equals("transitionEvent")) {
-	        //System.out.println("I am scoping!!!");
 
 	        Goto g = (Goto) context;
 

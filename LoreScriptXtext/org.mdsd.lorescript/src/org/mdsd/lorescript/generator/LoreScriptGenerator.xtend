@@ -33,13 +33,6 @@ import org.mdsd.lorescript.loreScript.IntParam
 class LoreScriptGenerator extends AbstractGenerator {
 	
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
-		/*
-		for (e : resource.allContents.toIterable.filter(Event)) {
-			fsa.generateFile(
-				e.name + ".java",
-				e.compile)
-		}
-		*/
     	val root = resource.contents.head   // root EObject
     	val scenarios = EcoreUtil2.getAllContentsOfType(root, Scenario)
     	val events = EcoreUtil2.getAllContentsOfType(root, Event)
